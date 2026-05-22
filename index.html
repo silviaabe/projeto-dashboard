@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Início do Dia</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js" async defer></script>
+    <style>
+        :root {
+            --bg-color: #0f111a;
+            --card-bg: #1a1d27;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            margin-top: 4vh;
+        }
+
+        header {
+            margin-bottom: 3rem;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .date {
+            color: var(--text-muted);
+            font-size: 1.15rem;
+            font-weight: 300;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            animation: fadeInUp 0.8s ease-out 0.2s both;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 20px;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            opacity: 0.8;
+        }
+
+        /* Gradientes para as bordas superiores dos cards */
+        .card.emails::before { background: linear-gradient(90deg, #3b82f6, #8b5cf6); }
+        .card.meetings::before { background: linear-gradient(90deg, #10b981, #059669); }
+        .card.tasks::before { background: linear-gradient(90deg, #f59e0b, #ea580c); }
+
+        .card-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        .card-value {
+            font-size: 4rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            line-height: 1;
+            background: linear-gradient(to right, #fff, #cbd5e1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .card-desc {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            font-weight: 300;
+            margin-top: auto;
+        }
+
+        /* Ícones decorativos sutis (usando pseudo-elementos) */
+        .card::after {
+            content: '';
+            position: absolute;
+            right: -20px;
+            bottom: -20px;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 70%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Animações de entrada */
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Layout Grid para Gráfico e Agenda */
+        .bottom-grid {
+            display: grid;
+            grid-template-columns: 3fr 2fr;
+            gap: 1.5rem;
+            margin-top: 2rem;
+            width: 100%;
+        }
+
+        .chart-section, .agenda-section {
+            background-color: var(--card-bg);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chart-section {
+            animation: fadeInUp 0.8s ease-out 0.4s both;
+        }
+
+        .agenda-section {
+            animation: fadeInUp 0.8s ease-out 0.5s both;
+        }
+
+        .chart-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            opacity: 0.8;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6);
+        }
+
+        .agenda-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            opacity: 0.8;
+            background: linear-gradient(90deg, #10b981, #059669);
+        }
+
+        .section-header {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        /* Agenda styles */
+        .agenda-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .agenda-item {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.02);
+            transition: all 0.2s ease;
+        }
+
+        .agenda-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateX(5px);
+            border-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .agenda-icon {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .agenda-icon svg {
+            width: 22px;
+            height: 22px;
+            fill: currentColor;
+        }
+
+        .agenda-content {
+            flex-grow: 1;
+        }
+
+        .agenda-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 0.3rem;
+        }
+
+        .agenda-time {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .agenda-duration {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 0.15rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Login Screen Styles */
+        #login-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .login-card {
+            background-color: var(--card-bg);
+            padding: 3rem;
+            border-radius: 20px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .login-card h2 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .login-card p {
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            line-height: 1.5;
+        }
+
+        .btn-google {
+            background-color: #f8fafc;
+            color: #0f111a;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            transition: all 0.2s ease;
+        }
+
+        .btn-google:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-google:hover:not(:disabled) {
+            background-color: #e2e8f0;
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 900px) {
+            .bottom-grid { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 2.2rem; }
+            .container { margin-top: 2rem; padding: 0 1rem; }
+            .cards-grid { grid-template-columns: 1fr; }
+            .card { padding: 1.5rem; }
+            .card-value { font-size: 3.5rem; }
+            .chart-section, .agenda-section { padding: 1.5rem; }
+            .chart-container { height: 250px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen">
+        <div class="login-card">
+            <h2>Bem-vindo</h2>
+            <p>Faça login com sua conta do Google para carregar seus e-mails e agenda de hoje.</p>
+            <button class="btn-google" id="btn-login" disabled>
+                <svg viewBox="0 0 48 48" style="width: 20px; height: 20px;">
+                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.9c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                    <path fill="none" d="M0 0h48v48H0z"/>
+                </svg>
+                Entrar com Google
+            </button>
+        </div>
+    </div>
+
+    <div class="container" id="dashboard" style="display: none;">
+        <header>
+            <h1>Por onde começo hoje?</h1>
+            <p class="date" id="current-date">Carregando data...</p>
+        </header>
+
+        <div class="cards-grid">
+            <div class="card emails">
+                <div class="card-title">Emails não lidos</div>
+                <div class="card-value" id="unread-emails-count">--</div>
+                <div class="card-desc">Caixa de entrada</div>
+            </div>
+
+            <div class="card meetings">
+                <div class="card-title">Reuniões hoje</div>
+                <div class="card-value" id="meetings-count">--</div>
+                <div class="card-desc">Agenda do dia</div>
+            </div>
+
+            <div class="card tasks">
+                <div class="card-title">Tarefas pendentes</div>
+                <div class="card-value">8</div>
+                <div class="card-desc">2 com prazo para hoje</div>
+            </div>
+        </div>
+
+        <div class="bottom-grid">
+            <div class="chart-section">
+                <div class="section-header">Volume de emails na semana</div>
+                <div class="chart-container">
+                    <canvas id="emailChart"></canvas>
+                </div>
+            </div>
+
+            <div class="agenda-section">
+                <div class="section-header">Agenda de hoje</div>
+                <ul class="agenda-list" id="agenda-list">
+                    <!-- Estes dados simulados serão substituídos após o login -->
+                    <li class="agenda-item">
+                        <div class="agenda-icon">
+                            <svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>
+                        </div>
+                        <div class="agenda-content">
+                            <div class="agenda-title">Daily da Equipe</div>
+                            <div class="agenda-time">09:30 <span class="agenda-duration">15 min</span></div>
+                        </div>
+                    </li>
+                    <li class="agenda-item">
+                        <div class="agenda-icon">
+                            <svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>
+                        </div>
+                        <div class="agenda-content">
+                            <div class="agenda-title">Revisão de Design</div>
+                            <div class="agenda-time">11:00 <span class="agenda-duration">45 min</span></div>
+                        </div>
+                    </li>
+                    <li class="agenda-item">
+                        <div class="agenda-icon">
+                            <svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>
+                        </div>
+                        <div class="agenda-content">
+                            <div class="agenda-title">Alinhamento de Metas</div>
+                            <div class="agenda-time">14:00 <span class="agenda-duration">1 hora</span></div>
+                        </div>
+                    </li>
+                    <li class="agenda-item">
+                        <div class="agenda-icon">
+                            <svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>
+                        </div>
+                        <div class="agenda-content">
+                            <div class="agenda-title">1:1 com a Gestão</div>
+                            <div class="agenda-time">16:30 <span class="agenda-duration">30 min</span></div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Pegar a data atual e formatar em português
+        const dateElement = document.getElementById('current-date');
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        let currentDate = new Date().toLocaleDateString('pt-BR', options);
+        
+        // Colocar a primeira letra em maiúsculo (ex: "segunda-feira" -> "Segunda-feira")
+        currentDate = currentDate.charAt(0).toUpperCase() + currentDate.slice(1);
+        
+        dateElement.textContent = currentDate;
+
+        // --- Configuração Google API ---
+        const CLIENT_ID = '500018491278-ntjqsf2ati3el1c14gjrpfcg2fotigu6.apps.googleusercontent.com';
+        const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.readonly';
+        const DISCOVERY_DOCS = [
+            'https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest',
+            'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'
+        ];
+
+        let tokenClient;
+        let gapiInited = false;
+        let gisInited = false;
+
+        document.getElementById('btn-login').addEventListener('click', handleAuthClick);
+
+        function gapiLoaded() {
+            gapi.load('client', initializeGapiClient);
+        }
+
+        async function initializeGapiClient() {
+            await gapi.client.init({
+                discoveryDocs: DISCOVERY_DOCS,
+            });
+            gapiInited = true;
+            maybeEnableButtons();
+        }
+
+        function gisLoaded() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: (tokenResponse) => {
+                    if (tokenResponse.error !== undefined) {
+                        throw (tokenResponse);
+                    }
+                    showDashboard();
+                    fetchData();
+                },
+            });
+            gisInited = true;
+            maybeEnableButtons();
+        }
+
+        function maybeEnableButtons() {
+            if (gapiInited && gisInited) {
+                document.getElementById('btn-login').disabled = false;
+            }
+        }
+
+        let checkScripts = setInterval(() => {
+            if (typeof gapi !== 'undefined' && !gapiInited) {
+                gapiLoaded();
+            }
+            if (typeof google !== 'undefined' && !gisInited) {
+                gisLoaded();
+            }
+            if (gapiInited && gisInited) {
+                clearInterval(checkScripts);
+            }
+        }, 100);
+
+        function handleAuthClick() {
+            tokenClient.requestAccessToken({prompt: 'consent'});
+        }
+
+        function showDashboard() {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+        }
+
+        async function fetchData() {
+            fetchEmails();
+            fetchCalendar();
+        }
+
+        async function fetchEmails() {
+            try {
+                let response = await gapi.client.gmail.users.messages.list({
+                    'userId': 'me',
+                    'q': 'is:unread in:inbox'
+                });
+                let count = response.result.messages ? response.result.messages.length : 0;
+                document.getElementById('unread-emails-count').innerText = count;
+            } catch (err) {
+                document.getElementById('unread-emails-count').innerText = 'Erro';
+                console.error(err);
+            }
+        }
+
+        async function fetchCalendar() {
+            try {
+                const now = new Date();
+                const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+                const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+
+                let response = await gapi.client.calendar.events.list({
+                    'calendarId': 'primary',
+                    'timeMin': startOfDay.toISOString(),
+                    'timeMax': endOfDay.toISOString(),
+                    'showDeleted': false,
+                    'singleEvents': true,
+                    'orderBy': 'startTime'
+                });
+
+                const events = response.result.items;
+                document.getElementById('meetings-count').innerText = events.length;
+
+                const agendaList = document.getElementById('agenda-list');
+                agendaList.innerHTML = '';
+
+                if (events.length === 0) {
+                    agendaList.innerHTML = '<li style="color: var(--text-muted); text-align: center; padding: 1rem;">Nenhuma reunião agendada para hoje. Aproveite o dia livre!</li>';
+                    return;
+                }
+
+                events.forEach(event => {
+                    const start = event.start.dateTime || event.start.date;
+                    const startTime = new Date(start);
+                    
+                    let timeString = 'Dia todo';
+                    let durationString = '';
+                    
+                    if (event.start.dateTime) {
+                        const end = new Date(event.end.dateTime);
+                        timeString = startTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                        const diffMins = Math.round((end - startTime) / 60000);
+                        if (diffMins >= 60) {
+                            const h = Math.floor(diffMins / 60);
+                            const m = diffMins % 60;
+                            durationString = m > 0 ? `${h}h ${m}m` : `${h}h`;
+                        } else {
+                            durationString = `${diffMins} min`;
+                        }
+                    }
+
+                    const li = document.createElement('li');
+                    li.className = 'agenda-item';
+                    li.innerHTML = `
+                        <div class="agenda-icon">
+                            <svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>
+                        </div>
+                        <div class="agenda-content">
+                            <div class="agenda-title">${event.summary || 'Evento Sem Título'}</div>
+                            <div class="agenda-time">${timeString} ${durationString ? `<span class="agenda-duration">${durationString}</span>` : ''}</div>
+                        </div>
+                    `;
+                    agendaList.appendChild(li);
+                });
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('agenda-list').innerHTML = '<li style="color: #ef4444; text-align: center; padding: 1rem;">Erro ao carregar agenda.</li>';
+            }
+        }
+
+        // --- Gráfico de Emails na Semana ---
+        const ctx = document.getElementById('emailChart').getContext('2d');
+        
+        // Gerar os rótulos dos últimos 7 dias dinamicamente
+        const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+        const labels = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            labels.push(days[d.getDay()]);
+        }
+
+        // Criar gradiente para as barras para combinar com o design
+        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(99, 102, 241, 0.9)'); // Indigo base
+        gradient.addColorStop(1, 'rgba(139, 92, 246, 0.2)'); // Purple transparente
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Emails',
+                    data: [12, 5, 8, 20, 3, 15, 9],
+                    backgroundColor: gradient,
+                    borderColor: 'rgba(99, 102, 241, 1)',
+                    borderWidth: 1,
+                    borderRadius: 6, // Barras arredondadas
+                    borderSkipped: false,
+                    hoverBackgroundColor: 'rgba(139, 92, 246, 0.9)' // Efeito hover nas barras
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false // Esconde a legenda
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(26, 29, 39, 0.9)',
+                        titleColor: '#f8fafc',
+                        bodyColor: '#94a3b8',
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        borderWidth: 1,
+                        padding: 12,
+                        cornerRadius: 8,
+                        displayColors: false, // Esconde aquele quadrado de cor no tooltip
+                        callbacks: {
+                            label: function(context) {
+                                return context.raw + ' emails';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)',
+                            drawBorder: false,
+                        },
+                        ticks: {
+                            color: '#94a3b8',
+                            font: {
+                                family: "'Outfit', sans-serif"
+                            },
+                            stepSize: 5
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false,
+                            drawBorder: false,
+                        },
+                        ticks: {
+                            color: '#94a3b8',
+                            font: {
+                                family: "'Outfit', sans-serif"
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
